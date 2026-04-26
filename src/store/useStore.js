@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { SEED_PRODUCTS } from '../firebase/seed'
+import { SEED_PRODUCTS, seedFirestoreIfEmpty } from '../firebase/seed'
 import {
   getProducts,
   createProduct,
@@ -47,7 +47,6 @@ const useStore = create(
             set({ products, productsLoading: false })
           } else {
             // Firestore empty — keep seed data and trigger seed
-            const { seedFirestoreIfEmpty } = await import('../firebase/seed')
             await seedFirestoreIfEmpty()
             set({ productsLoading: false })
           }
