@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import { X, Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../../firebase/config'
 import useStore from '../../store/useStore'
-
-const DEMO_MODE = !import.meta.env.VITE_FIREBASE_API_KEY ||
-  import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key'
 
 export default function CartModal() {
   const {
@@ -15,50 +10,17 @@ export default function CartModal() {
     updateQuantity,
     clearCart,
     closeCartModal,
-    openAuthModal,
-    user,
+    checkout,
     addToast,
   } = useStore()
   const [loading, setLoading] = useState(false)
-
   const total = cartTotal()
 
   const handleCheckout = async () => {
-    if (!user) {
-      addToast('سجّل دخولك أولاً لإتمام الطلب', 'warning')
-      closeCartModal()
-      openAuthModal()
-      return
-    }
-    if (cart.length === 0) {
-      addToast('السلة فارغة', 'warning'); return
-    }
-
     setLoading(true)
-    try {
-      if (!DEMO_MODE) {
-        await addDoc(collection(db, 'orders'), {
-          uid: user.uid,
-          email: user.email || null,
-          items: cart.map((i) => ({
-            id: i.id,
-            name: i.name,
-            price: i.price,
-            quantity: i.quantity,
-          })),
-          total,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-        })
-      }
-      clearCart()
-      closeCartModal()
-      addToast('تم تقديم طلبك بنجاح! سنتواصل معك قريباً ☕', 'success')
-    } catch {
-      addToast('فشل تقديم الطلب، حاول مجدداً', 'error')
-    } finally {
-      setLoading(false)
-    }
+    const ok = await checkout()
+    setLoading(false)
+    if (ok) closeCartModal()
   }
 
   return (

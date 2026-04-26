@@ -1,77 +1,20 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { SEED_PRODUCTS } from '../firebase/seed'
+import {
+  getProducts,
+  createProduct,
+  updateProduct as fsUpdateProduct,
+  deleteProduct as fsDeleteProduct,
+  submitOrder,
+  getAllOrders,
+} from '../firebase/firestore'
 
-// ─── Seed data from coffeschool.com ───────────────────────────────────────────
-const SEED_PRODUCTS = [
-  {
-    id: 'barista-course',
-    type: 'course',
-    name: 'دورة البريستا الاحترافية',
-    nameEn: 'Top Barista Course',
-    partner: 'Horeca Smart Academy',
-    description:
-      'دورة احترافية مع أكاديمية هوريكا سمارت. تعلم فن تحضير القهوة على أعلى مستوى، من أسرار الإسبريسو إلى الرسم على اللاتيه.',
-    price: 3000,
-    currency: 'EGP',
-    image: '/textures/barista-course.jpg',
-    model: 'cup',
-    lightColor: '#f97316',
-    badge: 'الأكثر مبيعاً',
-    features: ['شهادة معتمدة', 'تدريب عملي', 'معدات مهنية', 'مدة 5 أيام'],
-  },
-  {
-    id: 'turkish-coffee',
-    type: 'product',
-    name: 'قهوة تركية ميد-كوفي',
-    nameEn: 'Med-Coffee Turkish Coffee',
-    variant: 'سادة / خفيف 250 جم',
-    description:
-      'قهوة تركية فاخرة من ميد-كوفيز بخلطة أرابيكا ممتازة. أرومة عميقة وطعم أصيل يأخذك لأجواء إسطنبول في كل رشفة.',
-    price: 112,
-    currency: 'EGP',
-    image: '/textures/turkish-coffee.jpg',
-    model: 'cezve',
-    lightColor: '#8b5e3c',
-    badge: 'وكيل حصري',
-    features: ['250 جم', 'ناعمة الطحن', 'أرابيكا فاخرة', 'محمصة طازجة'],
-  },
-  {
-    id: 'syrup-1883',
-    type: 'product',
-    name: 'شراب 1883 الفرنسي',
-    nameEn: 'Syrup 1883 French',
-    description:
-      'شراب 1883 الأصيل المصنوع في فرنسا منذ 1883. يضيف لمسة فرنسية راقية لمشروباتك الساخنة والباردة. متوفر بنكهات متعددة.',
-    price: 350,
-    currency: 'EGP',
-    image: '/textures/syrup-1883.jpg',
-    model: 'bottle',
-    lightColor: '#3b82f6',
-    badge: 'وكيل حصري',
-    features: ['700 مل', 'صنع في فرنسا', 'منذ 1883', 'نكهات متعددة'],
-  },
-  {
-    id: 'elite-espresso',
-    type: 'product',
-    name: 'حبوب إسبريسو إيليت',
-    nameEn: 'Elite Espresso Beans',
-    variant: '1 كجم — 80% أرابيكا / 20% روبستا',
-    description:
-      'خلطة إيليت الاحترافية: 80% أرابيكا لنكهة ناعمة ومعقدة، 20% روبستا لكريما كثيفة وقوام ثري. المختار الأول للباريستا.',
-    price: 575,
-    currency: 'EGP',
-    image: '/textures/elite-espresso.jpg',
-    model: 'bag',
-    lightColor: '#c5a059',
-    badge: 'اختيار الخبراء',
-    features: ['1 كجم', '80% أرابيكا', '20% روبستا', 'تحميص داكن'],
-  },
-]
-
-// ─── Admin emails (in production this comes from Firestore claims) ─────────────
 const ADMIN_EMAILS = ['admin@coffeeschool.com', 'info@coffeeschool.com']
 
-// ─── Store ─────────────────────────────────────────────────────────────────────
+const IS_DEMO = !import.meta.env.VITE_FIREBASE_API_KEY ||
+  import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key'
+
 const useStore = create(
   persist(
     (set, get) => ({
@@ -81,36 +24,75 @@ const useStore = create(
       authLoading: true,
 
       setUser: (user) => {
-        const isAdmin = user ? ADMIN_EMAILS.includes(user.email) : false
+        const isAdmin = user
+          ? ADMIN_EMAILS.includes(user.email) || user.email?.endsWith('@coffeeschool.com')
+          : false
         set({ user, isAdmin, authLoading: false })
       },
 
-      setAuthLoading: (authLoading) => set({ authLoading }),
-
+      setAuthLoading: (v) => set({ authLoading: v }),
       clearUser: () => set({ user: null, isAdmin: false }),
 
       // ── Products ──────────────────────────────────────────────────────────────
       products: SEED_PRODUCTS,
+      productsLoading: false,
+      productsError: null,
 
-      addProduct: (product) =>
-        set((s) => ({
-          products: [
-            ...s.products,
-            { ...product, id: product.id || crypto.randomUUID() },
-          ],
-        })),
+      fetchProducts: async () => {
+        if (IS_DEMO) return // use seeded data
+        set({ productsLoading: true, productsError: null })
+        try {
+          const products = await getProducts()
+          if (products.length > 0) {
+            set({ products, productsLoading: false })
+          } else {
+            // Firestore empty — keep seed data and trigger seed
+            const { seedFirestoreIfEmpty } = await import('../firebase/seed')
+            await seedFirestoreIfEmpty()
+            set({ productsLoading: false })
+          }
+        } catch (err) {
+          console.warn('[store] fetchProducts failed, using seed data:', err.message)
+          set({ productsLoading: false, productsError: err.message })
+        }
+      },
 
-      updateProduct: (id, updates) =>
-        set((s) => ({
-          products: s.products.map((p) =>
-            p.id === id ? { ...p, ...updates } : p
-          ),
-        })),
+      // Admin CRUD — syncs to Firestore then updates local state
+      addProduct: async (data) => {
+        const product = { ...data, id: data.id || crypto.randomUUID() }
+        if (!IS_DEMO) {
+          try {
+            await createProduct(product)
+          } catch (err) {
+            console.warn('addProduct Firestore error:', err.message)
+          }
+        }
+        set((s) => ({ products: [...s.products, product] }))
+      },
 
-      deleteProduct: (id) =>
+      updateProduct: async (id, updates) => {
+        if (!IS_DEMO) {
+          try {
+            await fsUpdateProduct(id, updates)
+          } catch (err) {
+            console.warn('updateProduct Firestore error:', err.message)
+          }
+        }
         set((s) => ({
-          products: s.products.filter((p) => p.id !== id),
-        })),
+          products: s.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+        }))
+      },
+
+      deleteProduct: async (id) => {
+        if (!IS_DEMO) {
+          try {
+            await fsDeleteProduct(id)
+          } catch (err) {
+            console.warn('deleteProduct Firestore error:', err.message)
+          }
+        }
+        set((s) => ({ products: s.products.filter((p) => p.id !== id) }))
+      },
 
       // ── Cart ──────────────────────────────────────────────────────────────────
       cart: [],
@@ -121,9 +103,7 @@ const useStore = create(
           if (existing) {
             return {
               cart: s.cart.map((i) =>
-                i.id === product.id
-                  ? { ...i, quantity: i.quantity + 1 }
-                  : i
+                i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
               ),
             }
           }
@@ -138,9 +118,7 @@ const useStore = create(
           cart:
             quantity < 1
               ? s.cart.filter((i) => i.id !== id)
-              : s.cart.map((i) =>
-                  i.id === id ? { ...i, quantity } : i
-                ),
+              : s.cart.map((i) => (i.id === id ? { ...i, quantity } : i)),
         })),
 
       clearCart: () => set({ cart: [] }),
@@ -155,7 +133,53 @@ const useStore = create(
         return cart.reduce((sum, i) => sum + i.quantity, 0)
       },
 
-      // ── UI State ──────────────────────────────────────────────────────────────
+      // ── Orders ────────────────────────────────────────────────────────────────
+      orders: [],
+      ordersLoading: false,
+
+      checkout: async () => {
+        const { user, cart, cartTotal, clearCart, addToast } = get()
+        if (!user) {
+          addToast('سجّل دخولك أولاً لإتمام الطلب', 'warning')
+          return false
+        }
+        if (cart.length === 0) {
+          addToast('السلة فارغة', 'warning')
+          return false
+        }
+        try {
+          if (!IS_DEMO) {
+            await submitOrder(user.uid, user.email, cart, cartTotal())
+          }
+          clearCart()
+          addToast('تم تقديم طلبك بنجاح! سنتواصل معك قريباً ☕', 'success')
+          return true
+        } catch (err) {
+          addToast('فشل تقديم الطلب، حاول مجدداً', 'error')
+          return false
+        }
+      },
+
+      fetchOrders: async () => {
+        const { isAdmin } = get()
+        if (!isAdmin || IS_DEMO) return
+        set({ ordersLoading: true })
+        try {
+          const orders = await getAllOrders(100)
+          set({ orders, ordersLoading: false })
+        } catch {
+          set({ ordersLoading: false })
+        }
+      },
+
+      // ── Scroll / 3D scene state ───────────────────────────────────────────────
+      activeSection: 0,          // index into products[] — drives the 3D scene
+      scrollProgress: 0,         // 0–1 within the active section
+
+      setActiveSection: (index) => set({ activeSection: index }),
+      setScrollProgress: (progress) => set({ scrollProgress: progress }),
+
+      // ── UI state ──────────────────────────────────────────────────────────────
       authModalOpen: false,
       cartModalOpen: false,
       adminPanelOpen: false,
@@ -163,19 +187,14 @@ const useStore = create(
 
       openAuthModal: () => set({ authModalOpen: true }),
       closeAuthModal: () => set({ authModalOpen: false }),
-
       openCartModal: () => set({ cartModalOpen: true }),
       closeCartModal: () => set({ cartModalOpen: false }),
+      toggleAdminPanel: () => set((s) => ({ adminPanelOpen: !s.adminPanelOpen })),
 
-      toggleAdminPanel: () =>
-        set((s) => ({ adminPanelOpen: !s.adminPanelOpen })),
-
-      // ── Toast notifications ───────────────────────────────────────────────────
+      // ── Toast ─────────────────────────────────────────────────────────────────
       addToast: (message, type = 'info') => {
         const id = crypto.randomUUID()
-        set((s) => ({
-          toasts: [...s.toasts, { id, message, type }],
-        }))
+        set((s) => ({ toasts: [...s.toasts, { id, message, type }] }))
         setTimeout(() => {
           set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
         }, 3500)
@@ -185,7 +204,7 @@ const useStore = create(
         set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
     }),
     {
-      name: 'coffee-school-storage',
+      name: 'coffee-school-v2',
       partialize: (s) => ({ cart: s.cart }),
     }
   )

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase/config'
+import { seedFirestoreIfEmpty } from './firebase/seed'
 import useStore from './store/useStore'
 
 import Navbar from './components/ui/Navbar'
@@ -27,6 +28,11 @@ export default function App() {
     })
     return unsub
   }, [setUser])
+
+  // Seed Firestore on first run (no-op if already seeded or demo mode)
+  useEffect(() => {
+    seedFirestoreIfEmpty()
+  }, [])
 
   // Load products from Firestore (falls back to seed data in demo mode)
   useEffect(() => {

@@ -7,9 +7,9 @@ import {
   RecaptchaVerifier,
   updateProfile,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { X, Mail, Phone, Eye, EyeOff, Loader2, Coffee } from 'lucide-react'
-import { auth, db, googleProvider, appleProvider } from '../../firebase/config'
+import { auth, googleProvider, appleProvider } from '../../firebase/config'
+import { ensureUserDoc } from '../../firebase/firestore'
 import useStore from '../../store/useStore'
 
 // ─── Tab state: 'login' | 'signup' ───────────────────────────────────────────
@@ -17,22 +17,6 @@ import useStore from '../../store/useStore'
 
 const DEMO_MODE = !import.meta.env.VITE_FIREBASE_API_KEY ||
   import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key'
-
-async function ensureUserDoc(user) {
-  const ref = doc(db, 'users', user.uid)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      uid: user.uid,
-      email: user.email || null,
-      phone: user.phoneNumber || null,
-      displayName: user.displayName || null,
-      photoURL: user.photoURL || null,
-      role: 'user',
-      createdAt: serverTimestamp(),
-    })
-  }
-}
 
 export default function AuthModal() {
   const { closeAuthModal, setUser, addToast } = useStore()
