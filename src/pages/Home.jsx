@@ -1,5 +1,5 @@
 import { Coffee, BookOpen, Package, Phone, MapPin, Star } from 'lucide-react'
-import useStore from '../../store/useStore'
+import useStore from '../store/useStore'
 
 const CONTACT = {
   phones: ['+20 100 000 0000', '+20 111 111 1111'],
