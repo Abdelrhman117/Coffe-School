@@ -9,8 +9,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          if (id.includes('node_modules/three/')) return 'three-core'
-          if (id.includes('@react-three/fiber') || id.includes('@react-three/drei')) return 'r3f'
+          if (id.includes('node_modules/framer-motion')) return 'framer-motion'
           if (id.includes('firebase/')) return 'firebase'
           if (id.includes('gsap')) return 'gsap'
         },
