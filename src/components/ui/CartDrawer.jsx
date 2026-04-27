@@ -1,20 +1,23 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Trash2, Plus, Minus, ShoppingBag, Loader2 } from 'lucide-react'
+import { X, Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 import useCartStore from '../../store/useCartStore'
 import useUIStore from '../../store/useUIStore'
+import useAuthStore from '../../store/useAuthStore'
 
 export default function CartDrawer({ open }) {
-  const { cart, cartTotal, removeFromCart, updateQuantity, clearCart, checkout } = useCartStore()
-  const { closeCartDrawer, addToast } = useUIStore()
-  const [loading, setLoading] = useState(false)
+  const { cart, cartTotal, removeFromCart, updateQuantity, clearCart } = useCartStore()
+  const { closeCartDrawer, openCheckoutModal, openAuthModal, addToast } = useUIStore()
+  const { user } = useAuthStore()
   const total = cartTotal()
 
-  const handleCheckout = async () => {
-    setLoading(true)
-    const ok = await checkout()
-    setLoading(false)
-    if (ok) closeCartDrawer()
+  const handleCheckout = () => {
+    if (!user) {
+      addToast('سجّل دخولك أولاً لإتمام الطلب', 'warning')
+      closeCartDrawer()
+      openAuthModal()
+      return
+    }
+    openCheckoutModal()
   }
 
   return (
@@ -117,13 +120,11 @@ export default function CartDrawer({ open }) {
                   </button>
                   <motion.button
                     onClick={handleCheckout}
-                    disabled={loading}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
-                    className="btn-gold flex-1 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="btn-gold flex-1 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2"
                   >
-                    {loading && <Loader2 size={15} className="animate-spin" />}
-                    تأكيد الطلب
+                    إتمام الطلب
                   </motion.button>
                 </div>
               </motion.div>

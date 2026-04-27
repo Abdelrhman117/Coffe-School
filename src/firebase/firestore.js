@@ -58,10 +58,13 @@ export async function deleteProduct(id) {
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
-export async function submitOrder(uid, email, items, total) {
+export async function submitOrder(uid, email, items, total, contactInfo = {}) {
   const ref = await addDoc(collection(db, COL.orders), {
     uid,
     email: email || null,
+    contactName: contactInfo.name || null,
+    contactPhone: contactInfo.phone || null,
+    contactAddress: contactInfo.address || null,
     items: items.map((i) => ({
       id: i.id,
       name: i.name,

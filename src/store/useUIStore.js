@@ -3,6 +3,7 @@ import { create } from 'zustand'
 const useUIStore = create((set) => ({
   authModalOpen: false,
   cartDrawerOpen: false,
+  checkoutModalOpen: false,
   adminPanelOpen: false,
   toasts: [],
 
@@ -10,6 +11,8 @@ const useUIStore = create((set) => ({
   closeAuthModal: () => set({ authModalOpen: false }),
   openCartDrawer: () => set({ cartDrawerOpen: true }),
   closeCartDrawer: () => set({ cartDrawerOpen: false }),
+  openCheckoutModal: () => set({ checkoutModalOpen: true, cartDrawerOpen: false }),
+  closeCheckoutModal: () => set({ checkoutModalOpen: false }),
   toggleAdminPanel: () => set((s) => ({ adminPanelOpen: !s.adminPanelOpen })),
 
   addToast: (message, type = 'info') => {

@@ -9,6 +9,7 @@ import useUIStore from './store/useUIStore'
 import Navbar from './components/layout/Navbar'
 import AuthModal from './components/auth/AuthModal'
 import CartDrawer from './components/ui/CartDrawer'
+import CheckoutModal from './components/ui/CheckoutModal'
 import ToastContainer from './components/ui/Toast'
 import Home from './pages/Home'
 import AdminDashboard from './pages/AdminDashboard'
@@ -16,7 +17,7 @@ import AdminDashboard from './pages/AdminDashboard'
 export default function App() {
   const { setUser } = useAuthStore()
   const { fetchProducts } = useProductStore()
-  const { authModalOpen, cartDrawerOpen, adminPanelOpen, toggleAdminPanel } = useUIStore()
+  const { authModalOpen, cartDrawerOpen, checkoutModalOpen, closeCheckoutModal, adminPanelOpen, toggleAdminPanel } = useUIStore()
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
@@ -41,6 +42,7 @@ export default function App() {
       {adminPanelOpen && <AdminDashboard onClose={toggleAdminPanel} />}
       {authModalOpen && <AuthModal />}
       <CartDrawer open={cartDrawerOpen} />
+      <CheckoutModal open={checkoutModalOpen} onClose={closeCheckoutModal} />
       <ToastContainer />
     </div>
   )
