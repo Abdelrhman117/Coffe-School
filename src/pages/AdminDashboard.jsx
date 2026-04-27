@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, Plus, Edit2, Trash2, ShoppingBag, Package,
-  Loader2, Shield, Save, RefreshCw, CheckCircle, Clock, XCircle,
+  Loader2, Shield, Save, RefreshCw, CheckCircle, Clock, XCircle, Coffee,
+  LayoutDashboard,
 } from 'lucide-react'
 import useAuthStore from '../store/useAuthStore'
 import useProductStore from '../store/useProductStore'
@@ -10,12 +12,7 @@ import useUIStore from '../store/useUIStore'
 const MODELS = ['tamper', 'cezve', 'bottle', 'bag', 'cup']
 const TYPES = ['product', 'course']
 const STATUS_LABELS = { pending: 'قيد الانتظار', confirmed: 'مؤكد', cancelled: 'ملغي', delivered: 'تم التسليم' }
-const STATUS_ICONS = {
-  pending: <Clock size={14} className="text-yellow-400" />,
-  confirmed: <CheckCircle size={14} className="text-green-400" />,
-  cancelled: <XCircle size={14} className="text-red-400" />,
-  delivered: <CheckCircle size={14} className="text-[#c5a059]" />,
-}
+const STATUS_COLORS = { pending: '#facc15', confirmed: '#4ade80', cancelled: '#f87171', delivered: '#c5a059' }
 
 const EMPTY_FORM = {
   name: '', nameEn: '', type: 'product', price: '', currency: 'EGP',
@@ -23,10 +20,23 @@ const EMPTY_FORM = {
   badge: '', features: '', variant: '', partner: '', image: '',
 }
 
+const NAV_ITEMS = [
+  { id: 'products', label: 'المنتجات', icon: Package },
+  { id: 'orders', label: 'الطلبات', icon: ShoppingBag },
+]
+
+// ── Slide-up card variant ──────────────────────────────────────────────────────
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.06, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } }),
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } },
+}
+
 export default function AdminDashboard({ onClose }) {
   const { isAdmin } = useAuthStore()
   const { products, addProduct, updateProduct, deleteProduct, orders, ordersLoading, fetchOrders } = useProductStore()
   const { addToast } = useUIStore()
+
   const [tab, setTab] = useState('products')
   const [form, setForm] = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
@@ -40,24 +50,24 @@ export default function AdminDashboard({ onClose }) {
 
   if (!isAdmin) {
     return (
-      <div className="fixed inset-0 z-[8500] flex items-center justify-center bg-[#050302]/95">
+      <motion.div
+        className="fixed inset-0 z-[8500] flex items-center justify-center"
+        style={{ background: 'rgba(5,3,2,0.97)', backdropFilter: 'blur(10px)' }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      >
         <div className="glass-dark rounded-2xl p-10 text-center space-y-4 border border-red-500/20 max-w-sm">
           <Shield size={44} className="text-red-400 mx-auto" />
           <p className="text-red-400 font-bold text-lg">غير مصرح بالوصول</p>
           <p className="text-[#c5a059]/50 text-sm">هذه الصفحة للمشرفين فقط</p>
           <button onClick={onClose} className="btn-gold px-8 py-2.5 rounded-xl text-sm">العودة</button>
         </div>
-      </div>
+      </motion.div>
     )
   }
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const openAdd = () => {
-    setForm(EMPTY_FORM)
-    setEditId(null)
-    setShowForm(true)
-  }
+  const openAdd = () => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true) }
 
   const openEdit = (p) => {
     setForm({
@@ -73,13 +83,9 @@ export default function AdminDashboard({ onClose }) {
   }
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.price) {
-      addToast('الاسم والسعر مطلوبان', 'warning'); return
-    }
+    if (!form.name.trim() || !form.price) { addToast('الاسم والسعر مطلوبان', 'warning'); return }
     const price = parseFloat(form.price)
-    if (isNaN(price) || price <= 0) {
-      addToast('السعر يجب أن يكون رقماً موجباً', 'warning'); return
-    }
+    if (isNaN(price) || price <= 0) { addToast('السعر يجب أن يكون رقماً موجباً', 'warning'); return }
     setSaving(true)
     const data = {
       ...form, price,
@@ -103,271 +109,434 @@ export default function AdminDashboard({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[8500] bg-[#050302]/96 overflow-auto" style={{ backdropFilter: 'blur(4px)' }}>
-      <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-[#c5a059]">لوحة الإدارة</h1>
-            <p className="text-[#c5a059]/40 text-xs mt-0.5">Coffee School Admin Panel</p>
+    <motion.div
+      className="fixed inset-0 z-[8500] flex overflow-hidden"
+      style={{ background: 'rgba(5,3,2,0.97)', backdropFilter: 'blur(8px)' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      {/* ── SIDEBAR ───────────────────────────────────────────────────────────── */}
+      <motion.aside
+        className="hidden md:flex flex-col w-60 shrink-0 border-l border-[#c5a059]/10 bg-[#080604]"
+        initial={{ x: 60, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 px-5 py-6 border-b border-[#c5a059]/10">
+          <div className="w-8 h-8 rounded-xl bg-[#c5a059]/15 flex items-center justify-center">
+            <LayoutDashboard size={16} className="text-[#c5a059]" />
           </div>
-          <button onClick={onClose} className="glass px-4 py-2 rounded-xl text-[#c5a059]/60 hover:text-[#c5a059] text-sm flex items-center gap-1.5 border border-[#c5a059]/15 transition-all">
-            <X size={15} /> إغلاق
+          <div>
+            <p className="text-[#c5a059] font-black text-sm leading-none">لوحة الإدارة</p>
+            <p className="text-[#c5a059]/30 text-[10px] mt-0.5">Coffee School</p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-1">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className="relative w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-colors"
+              style={{ color: tab === id ? '#050302' : 'rgba(197,160,89,0.55)' }}
+            >
+              {tab === id && (
+                <motion.div
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-xl bg-[#c5a059]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                />
+              )}
+              <Icon size={16} className="relative z-10" />
+              <span className="relative z-10">{label}</span>
+              {id === 'products' && (
+                <span className={`relative z-10 mr-auto text-[10px] font-black px-1.5 rounded-full ${tab === id ? 'bg-[#050302]/20 text-[#050302]' : 'bg-[#c5a059]/15 text-[#c5a059]/60'}`}>
+                  {products.length}
+                </span>
+              )}
+              {id === 'orders' && orders.length > 0 && (
+                <span className={`relative z-10 mr-auto text-[10px] font-black px-1.5 rounded-full ${tab === id ? 'bg-[#050302]/20 text-[#050302]' : 'bg-[#c5a059]/15 text-[#c5a059]/60'}`}>
+                  {orders.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Close */}
+        <div className="p-4 border-t border-[#c5a059]/10">
+          <button
+            onClick={onClose}
+            className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl text-sm text-[#c5a059]/50 hover:text-[#c5a059] hover:bg-[#c5a059]/8 transition-all"
+          >
+            <X size={15} /> إغلاق اللوحة
+          </button>
+        </div>
+      </motion.aside>
+
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Mobile top bar */}
+        <div className="md:hidden flex items-center justify-between px-4 py-4 border-b border-[#c5a059]/10 shrink-0">
+          <div className="flex items-center gap-2">
+            <Coffee size={18} className="text-[#c5a059]" />
+            <span className="text-[#c5a059] font-black text-sm">لوحة الإدارة</span>
+          </div>
+          <button onClick={onClose} className="text-[#c5a059]/50 hover:text-[#c5a059] p-1">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex rounded-xl overflow-hidden border border-[#c5a059]/15 mb-8 w-fit">
-          <TabBtn active={tab === 'products'} onClick={() => setTab('products')} icon={<Package size={15} />}>
-            المنتجات ({products.length})
-          </TabBtn>
-          <TabBtn active={tab === 'orders'} onClick={() => setTab('orders')} icon={<ShoppingBag size={15} />}>
-            الطلبات {orders.length > 0 && `(${orders.length})`}
-          </TabBtn>
+        {/* Mobile tabs */}
+        <div className="md:hidden flex border-b border-[#c5a059]/10 shrink-0">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold transition-all ${
+                tab === id ? 'text-[#c5a059] border-b-2 border-[#c5a059]' : 'text-[#c5a059]/40'
+              }`}
+            >
+              <Icon size={15} />{label}
+            </button>
+          ))}
         </div>
 
-        {/* ── PRODUCTS TAB ──────────────────────────────────────────────────── */}
-        {tab === 'products' && (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[#e5d5b0] font-bold">المنتجات والدورات</h2>
-              <button onClick={openAdd} className="btn-gold px-4 py-2 rounded-xl text-sm flex items-center gap-2">
-                <Plus size={15} /> إضافة منتج
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {products.map((p) => (
-                <div key={p.id} className="glass rounded-2xl p-5 border border-[#c5a059]/10 hover:border-[#c5a059]/25 transition-all">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                          style={{ background: p.lightColor + '22', color: p.lightColor, border: `1px solid ${p.lightColor}44` }}
-                        >
-                          {p.type === 'course' ? 'دورة' : 'منتج'}
-                        </span>
-                        {p.badge && <span className="text-[9px] text-[#c5a059]/50">{p.badge}</span>}
-                      </div>
-                      <h3 className="font-bold text-[#e5d5b0] text-sm leading-snug">{p.name}</h3>
-                      {p.variant && <p className="text-[10px] text-[#c5a059]/50 mt-0.5">{p.variant}</p>}
-                      <p className="text-xs text-[#c5a059]/60 mt-1 line-clamp-2 leading-relaxed">{p.description}</p>
-                      <div className="flex items-center gap-3 mt-3">
-                        <span className="text-[#c5a059] font-black text-base">
-                          {Number(p.price).toLocaleString('ar-EG')} <span className="text-[10px] font-normal">{p.currency}</span>
-                        </span>
-                        <span className="text-[#c5a059]/30 text-xs">موديل: {p.model}</span>
-                        <span
-                          className="inline-block w-3 h-3 rounded-full border border-white/20"
-                          style={{ background: p.lightColor }}
-                          title="لون الإضاءة"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <button onClick={() => openEdit(p)} className="p-2 rounded-lg bg-[#c5a059]/10 text-[#c5a059] hover:bg-[#c5a059]/20 transition-colors">
-                        <Edit2 size={14} />
-                      </button>
-                      <button onClick={() => setDeleteConfirm(p.id)} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6 md:p-8">
+          <AnimatePresence mode="wait">
+            {tab === 'products' && (
+              <motion.div
+                key="products"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-black text-[#e5d5b0]">المنتجات والدورات</h2>
+                    <p className="text-xs text-[#c5a059]/40 mt-0.5">{products.length} عنصر</p>
                   </div>
+                  <motion.button
+                    onClick={openAdd}
+                    className="btn-gold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2"
+                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  >
+                    <Plus size={15} /> إضافة منتج
+                  </motion.button>
                 </div>
-              ))}
-            </div>
-          </>
-        )}
 
-        {/* ── ORDERS TAB ────────────────────────────────────────────────────── */}
-        {tab === 'orders' && (
-          <>
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-[#e5d5b0] font-bold">الطلبات الواردة</h2>
-              <button onClick={fetchOrders} className="text-[#c5a059]/50 hover:text-[#c5a059] flex items-center gap-1.5 text-sm transition-colors">
-                <RefreshCw size={14} /> تحديث
-              </button>
-            </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <AnimatePresence>
+                    {products.map((p, i) => (
+                      <motion.div
+                        key={p.id}
+                        custom={i}
+                        variants={cardVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="exit"
+                        layout
+                        className="glass rounded-2xl p-5 border border-[#c5a059]/10 group"
+                        whileHover={{ borderColor: 'rgba(197,160,89,0.3)', y: -2 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span
+                                className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+                                style={{ background: (p.lightColor || '#c5a059') + '22', color: p.lightColor || '#c5a059', border: `1px solid ${p.lightColor || '#c5a059'}44` }}
+                              >
+                                {p.type === 'course' ? 'دورة' : 'منتج'}
+                              </span>
+                              {p.badge && <span className="text-[9px] text-[#c5a059]/40 truncate">{p.badge}</span>}
+                            </div>
+                            <h3 className="font-bold text-[#e5d5b0] text-sm leading-snug">{p.name}</h3>
+                            {p.variant && <p className="text-[10px] text-[#c5a059]/50 mt-0.5">{p.variant}</p>}
+                            <p className="text-xs text-[#c5a059]/55 mt-1.5 line-clamp-2 leading-relaxed">{p.description}</p>
+                            <p className="text-[#c5a059] font-black text-base mt-2.5">
+                              {Number(p.price).toLocaleString('ar-EG')}
+                              <span className="text-[10px] font-normal mr-1">{p.currency}</span>
+                            </p>
+                          </div>
 
-            {ordersLoading ? (
-              <div className="flex justify-center py-20">
-                <Loader2 size={28} className="animate-spin text-[#c5a059]" />
-              </div>
-            ) : orders.length === 0 ? (
-              <div className="text-center py-20 text-[#c5a059]/30">
-                <ShoppingBag size={40} className="mx-auto mb-3 opacity-30" />
-                <p>لا توجد طلبات بعد</p>
-                <p className="text-xs mt-1">ستظهر الطلبات هنا فور تقديمها</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {orders.map((order) => (
-                  <div key={order.id} className="glass rounded-2xl p-4 border border-[#c5a059]/10">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          {STATUS_ICONS[order.status] || STATUS_ICONS.pending}
-                          <span className="text-xs text-[#c5a059]/60">
-                            {STATUS_LABELS[order.status] || 'قيد الانتظار'}
-                          </span>
-                          <span className="text-[9px] text-[#c5a059]/30 font-mono">#{order.id?.slice(-6)}</span>
+                          <div className="flex flex-col gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <motion.button
+                              onClick={() => openEdit(p)}
+                              className="p-2 rounded-lg bg-[#c5a059]/10 text-[#c5a059] hover:bg-[#c5a059]/25 transition-colors"
+                              whileTap={{ scale: 0.85 }}
+                            >
+                              <Edit2 size={14} />
+                            </motion.button>
+                            <motion.button
+                              onClick={() => setDeleteConfirm(p.id)}
+                              className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/25 transition-colors"
+                              whileTap={{ scale: 0.85 }}
+                            >
+                              <Trash2 size={14} />
+                            </motion.button>
+                          </div>
                         </div>
-                        <p className="text-sm text-[#e5d5b0] font-semibold truncate">
-                          {order.email || order.uid?.slice(0, 12) + '...'}
-                        </p>
-                        <p className="text-xs text-[#c5a059]/50 mt-0.5">
-                          {order.items?.length} منتج ·{' '}
-                          {order.items?.map((i) => i.name).join('، ').slice(0, 50)}
-                          {order.items?.map(i => i.name).join('، ').length > 50 ? '...' : ''}
-                        </p>
-                      </div>
-                      <div className="text-left shrink-0">
-                        <p className="text-[#c5a059] font-black text-base">
-                          {Number(order.total || 0).toLocaleString('ar-EG')}
-                          <span className="text-xs font-normal mr-1">جنيه</span>
-                        </p>
-                        {order.createdAt?.toDate && (
-                          <p className="text-[10px] text-[#c5a059]/30 text-right">
-                            {order.createdAt.toDate().toLocaleDateString('ar-EG')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
             )}
-          </>
-        )}
+
+            {tab === 'orders' && (
+              <motion.div
+                key="orders"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-black text-[#e5d5b0]">الطلبات الواردة</h2>
+                    <p className="text-xs text-[#c5a059]/40 mt-0.5">{orders.length} طلب</p>
+                  </div>
+                  <motion.button
+                    onClick={fetchOrders}
+                    className="text-[#c5a059]/50 hover:text-[#c5a059] flex items-center gap-1.5 text-sm transition-colors"
+                    whileTap={{ rotate: 180 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <RefreshCw size={14} /> تحديث
+                  </motion.button>
+                </div>
+
+                {ordersLoading ? (
+                  <div className="flex justify-center py-24">
+                    <Loader2 size={28} className="animate-spin text-[#c5a059]" />
+                  </div>
+                ) : orders.length === 0 ? (
+                  <motion.div
+                    className="text-center py-24 text-[#c5a059]/30"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  >
+                    <ShoppingBag size={48} className="mx-auto mb-4 opacity-20" />
+                    <p className="font-semibold">لا توجد طلبات بعد</p>
+                    <p className="text-xs mt-1 opacity-60">ستظهر الطلبات هنا فور تقديمها</p>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.map((order, i) => {
+                      const color = STATUS_COLORS[order.status] || STATUS_COLORS.pending
+                      return (
+                        <motion.div
+                          key={order.id}
+                          custom={i}
+                          variants={cardVariants}
+                          initial="hidden"
+                          animate="visible"
+                          className="glass rounded-2xl p-4 border border-[#c5a059]/10"
+                          whileHover={{ borderColor: 'rgba(197,160,89,0.25)' }}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span
+                                  className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                                  style={{ background: `${color}20`, color, border: `1px solid ${color}44` }}
+                                >
+                                  {STATUS_LABELS[order.status] || 'قيد الانتظار'}
+                                </span>
+                                <span className="text-[9px] text-[#c5a059]/30 font-mono">#{order.id?.slice(-6)}</span>
+                              </div>
+                              <p className="text-sm text-[#e5d5b0] font-semibold truncate">
+                                {order.contactName || order.email || order.uid?.slice(0, 14) + '...'}
+                              </p>
+                              {order.contactPhone && (
+                                <p className="text-xs text-[#c5a059]/50 mt-0.5" dir="ltr">{order.contactPhone}</p>
+                              )}
+                              <p className="text-xs text-[#c5a059]/40 mt-1">
+                                {order.items?.length} منتج ·{' '}
+                                {order.items?.map((i) => i.name).join('، ').slice(0, 55)}
+                                {order.items?.map((i) => i.name).join('، ').length > 55 ? '...' : ''}
+                              </p>
+                            </div>
+                            <div className="text-left shrink-0">
+                              <p className="text-[#c5a059] font-black text-base">
+                                {Number(order.total || 0).toLocaleString('ar-EG')}
+                                <span className="text-xs font-normal mr-1">جنيه</span>
+                              </p>
+                              {order.createdAt?.toDate && (
+                                <p className="text-[10px] text-[#c5a059]/30 text-right mt-0.5">
+                                  {order.createdAt.toDate().toLocaleDateString('ar-EG')}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* ── PRODUCT FORM MODAL ──────────────────────────────────────────────── */}
-      {showForm && (
-        <div
-          className="fixed inset-0 z-[9000] flex items-start justify-center p-4 pt-12 overflow-auto"
-          style={{ background: 'rgba(5,3,2,0.85)', backdropFilter: 'blur(8px)' }}
-          onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
-        >
-          <div className="glass-dark rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl mb-8">
-            {/* Form Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#c5a059]/15">
-              <h3 className="font-bold text-[#c5a059]">
-                {editId ? 'تعديل المنتج' : 'إضافة منتج جديد'}
-              </h3>
-              <button onClick={() => setShowForm(false)} className="text-[#c5a059]/50 hover:text-[#c5a059] transition-colors">
-                <X size={18} />
-              </button>
-            </div>
+      {/* ── PRODUCT FORM PANEL (slides in from right/left) ─────────────────────── */}
+      <AnimatePresence>
+        {showForm && (
+          <>
+            <motion.div
+              key="form-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10"
+              style={{ background: 'rgba(5,3,2,0.65)' }}
+              onClick={() => setShowForm(false)}
+            />
+            <motion.div
+              key="form-panel"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 340, damping: 36 }}
+              className="absolute top-0 right-0 bottom-0 z-20 w-full max-w-[520px] glass-dark border-l border-[#c5a059]/15 flex flex-col shadow-2xl overflow-hidden"
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#c5a059]/15 shrink-0">
+                <h3 className="font-bold text-[#c5a059]">{editId ? 'تعديل المنتج' : 'إضافة منتج جديد'}</h3>
+                <motion.button onClick={() => setShowForm(false)} className="text-[#c5a059]/50 hover:text-[#c5a059]" whileTap={{ scale: 0.85 }}>
+                  <X size={18} />
+                </motion.button>
+              </div>
 
-            {/* Form Fields */}
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3">
-                <FField label="الاسم بالعربية *">
-                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.name} onChange={setField('name')} placeholder="دورة البريستا..." />
+              {/* Form fields */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <FField label="الاسم بالعربية *">
+                    <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.name} onChange={setField('name')} placeholder="دورة البريستا..." />
+                  </FField>
+                  <FField label="الاسم بالإنجليزية">
+                    <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.nameEn} onChange={setField('nameEn')} placeholder="Barista Course" />
+                  </FField>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <FField label="النوع">
+                    <select className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.type} onChange={setField('type')}>
+                      {TYPES.map((t) => <option key={t} value={t}>{t === 'course' ? 'دورة' : 'منتج'}</option>)}
+                    </select>
+                  </FField>
+                  <FField label="السعر (EGP) *">
+                    <input type="number" className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.price} onChange={setField('price')} placeholder="3000" min="0" />
+                  </FField>
+                  <FField label="موديل 3D">
+                    <select className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.model} onChange={setField('model')}>
+                      {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </FField>
+                </div>
+
+                <FField label="الوصف">
+                  <textarea className="w-full input-gold rounded-xl px-3 py-2.5 text-sm resize-none" rows={3} value={form.description} onChange={setField('description')} placeholder="وصف تفصيلي..." />
                 </FField>
-                <FField label="الاسم بالإنجليزية">
-                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.nameEn} onChange={setField('nameEn')} placeholder="Barista Course" />
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FField label="الفارقة (variant)">
+                    <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.variant} onChange={setField('variant')} placeholder="250 جم" />
+                  </FField>
+                  <FField label="الشريك (partner)">
+                    <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.partner} onChange={setField('partner')} placeholder="Horeca Smart" />
+                  </FField>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FField label="شارة (badge)">
+                    <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.badge} onChange={setField('badge')} placeholder="الأكثر مبيعاً" />
+                  </FField>
+                  <FField label="لون الإضاءة">
+                    <div className="flex items-center gap-2">
+                      <input type="color" className="w-10 h-10 rounded-lg cursor-pointer border border-[#c5a059]/25 bg-transparent p-1" value={form.lightColor} onChange={setField('lightColor')} />
+                      <input className="flex-1 input-gold rounded-xl px-3 py-2.5 text-sm font-mono" dir="ltr" value={form.lightColor} onChange={setField('lightColor')} />
+                    </div>
+                  </FField>
+                </div>
+
+                <FField label="المميزات (مفصولة بفاصلة)">
+                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.features} onChange={setField('features')} placeholder="شهادة معتمدة، تدريب عملي، مدة 5 أيام" />
+                </FField>
+
+                <FField label="رابط الصورة">
+                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.image} onChange={setField('image')} placeholder="/textures/product.jpg" />
                 </FField>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <FField label="النوع">
-                  <select className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.type} onChange={setField('type')}>
-                    {TYPES.map((t) => <option key={t} value={t}>{t === 'course' ? 'دورة' : 'منتج'}</option>)}
-                  </select>
-                </FField>
-                <FField label="السعر (EGP) *">
-                  <input type="number" className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.price} onChange={setField('price')} placeholder="3000" min="0" />
-                </FField>
-                <FField label="الموديل ثلاثي الأبعاد">
-                  <select className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.model} onChange={setField('model')}>
-                    {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </FField>
+              {/* Panel footer */}
+              <div className="flex gap-3 px-6 py-5 border-t border-[#c5a059]/15 shrink-0">
+                <button onClick={() => setShowForm(false)} className="px-5 py-2.5 rounded-xl border border-[#c5a059]/20 text-[#c5a059]/60 hover:text-[#c5a059] text-sm transition-all">
+                  إلغاء
+                </button>
+                <motion.button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-gold flex-1 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+                >
+                  {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  {editId ? 'حفظ التعديلات' : 'إضافة المنتج'}
+                </motion.button>
               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-              <FField label="الوصف">
-                <textarea className="w-full input-gold rounded-xl px-3 py-2.5 text-sm resize-none" rows={3} value={form.description} onChange={setField('description')} placeholder="وصف تفصيلي للمنتج..." />
-              </FField>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FField label="الفارقة / الباقة (variant)">
-                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.variant} onChange={setField('variant')} placeholder="250 جم / خفيف" />
-                </FField>
-                <FField label="الشريك (partner)">
-                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.partner} onChange={setField('partner')} placeholder="Horeca Smart Academy" />
-                </FField>
+      {/* ── DELETE CONFIRM ────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <motion.div
+            key="delete-confirm"
+            className="absolute inset-0 z-30 flex items-center justify-center p-4"
+            style={{ background: 'rgba(5,3,2,0.88)', backdropFilter: 'blur(4px)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="glass-dark rounded-2xl p-8 max-w-sm w-full text-center space-y-4 border border-red-500/25"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 24 }}
+            >
+              <motion.div
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 16, delay: 0.1 }}
+              >
+                <Trash2 size={40} className="text-red-400 mx-auto" />
+              </motion.div>
+              <p className="text-[#e5d5b0] font-bold text-lg">هل أنت متأكد من الحذف؟</p>
+              <p className="text-[#c5a059]/50 text-sm">لا يمكن التراجع عن هذا الإجراء</p>
+              <div className="flex gap-3 justify-center pt-1">
+                <button onClick={() => setDeleteConfirm(null)} className="px-6 py-2.5 rounded-xl border border-[#c5a059]/20 text-[#c5a059]/60 hover:text-[#c5a059] text-sm transition-all">
+                  إلغاء
+                </button>
+                <motion.button
+                  onClick={() => handleDelete(deleteConfirm)}
+                  className="px-6 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold transition-all"
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
+                >
+                  نعم، احذف
+                </motion.button>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FField label="شارة (badge)">
-                  <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.badge} onChange={setField('badge')} placeholder="الأكثر مبيعاً" />
-                </FField>
-                <FField label="لون الإضاءة">
-                  <div className="flex items-center gap-2">
-                    <input type="color" className="w-12 h-10 rounded-lg cursor-pointer border border-[#c5a059]/25 bg-transparent" value={form.lightColor} onChange={setField('lightColor')} />
-                    <input className="flex-1 input-gold rounded-xl px-3 py-2.5 text-sm font-mono" dir="ltr" value={form.lightColor} onChange={setField('lightColor')} placeholder="#c5a059" />
-                  </div>
-                </FField>
-              </div>
-
-              <FField label="المميزات (مفصولة بفاصلة)">
-                <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" value={form.features} onChange={setField('features')} placeholder="شهادة معتمدة، تدريب عملي، مدة 5 أيام" />
-              </FField>
-
-              <FField label="رابط الصورة">
-                <input className="w-full input-gold rounded-xl px-3 py-2.5 text-sm" dir="ltr" value={form.image} onChange={setField('image')} placeholder="/textures/product.jpg" />
-              </FField>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex gap-3 px-6 py-4 border-t border-[#c5a059]/15">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2.5 rounded-xl border border-[#c5a059]/20 text-[#c5a059]/60 hover:text-[#c5a059] text-sm transition-all">
-                إلغاء
-              </button>
-              <button onClick={handleSave} disabled={saving} className="btn-gold flex-1 py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60">
-                {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                {editId ? 'حفظ التعديلات' : 'إضافة المنتج'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── DELETE CONFIRM ───────────────────────────────────────────────────── */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-[9100] flex items-center justify-center p-4" style={{ background: 'rgba(5,3,2,0.9)' }}>
-          <div className="glass-dark rounded-2xl p-8 max-w-sm w-full text-center space-y-4 border border-red-500/20">
-            <Trash2 size={36} className="text-red-400 mx-auto" />
-            <p className="text-[#e5d5b0] font-bold">هل أنت متأكد من الحذف؟</p>
-            <p className="text-[#c5a059]/50 text-sm">لا يمكن التراجع عن هذا الإجراء</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setDeleteConfirm(null)} className="px-6 py-2.5 rounded-xl border border-[#c5a059]/20 text-[#c5a059]/60 hover:text-[#c5a059] text-sm">
-                إلغاء
-              </button>
-              <button onClick={() => handleDelete(deleteConfirm)} className="px-6 py-2.5 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm font-bold transition-all">
-                نعم، احذف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TabBtn({ active, onClick, icon, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all ${
-        active ? 'bg-[#c5a059] text-[#050302]' : 'text-[#c5a059]/60 hover:text-[#c5a059]'
-      }`}
-    >
-      {icon}{children}
-    </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
