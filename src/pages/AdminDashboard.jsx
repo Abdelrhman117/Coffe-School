@@ -3,7 +3,9 @@ import {
   X, Plus, Edit2, Trash2, ShoppingBag, Package,
   Loader2, Shield, Save, RefreshCw, CheckCircle, Clock, XCircle,
 } from 'lucide-react'
-import useStore from '../store/useStore'
+import useAuthStore from '../store/useAuthStore'
+import useProductStore from '../store/useProductStore'
+import useUIStore from '../store/useUIStore'
 
 const MODELS = ['tamper', 'cezve', 'bottle', 'bag', 'cup']
 const TYPES = ['product', 'course']
@@ -22,7 +24,9 @@ const EMPTY_FORM = {
 }
 
 export default function AdminDashboard({ onClose }) {
-  const { isAdmin, products, addProduct, updateProduct, deleteProduct, orders, ordersLoading, fetchOrders, addToast } = useStore()
+  const { isAdmin } = useAuthStore()
+  const { products, addProduct, updateProduct, deleteProduct, orders, ordersLoading, fetchOrders } = useProductStore()
+  const { addToast } = useUIStore()
   const [tab, setTab] = useState('products')
   const [form, setForm] = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)

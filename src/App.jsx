@@ -2,26 +2,22 @@ import { useEffect } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase/config'
 import { seedFirestoreIfEmpty } from './firebase/seed'
-import useStore from './store/useStore'
+import useAuthStore from './store/useAuthStore'
+import useProductStore from './store/useProductStore'
+import useUIStore from './store/useUIStore'
 
-import Navbar from './components/ui/Navbar'
+import Navbar from './components/layout/Navbar'
 import AuthModal from './components/auth/AuthModal'
-import CartModal from './components/ui/CartModal'
+import CartDrawer from './components/ui/CartDrawer'
 import ToastContainer from './components/ui/Toast'
 import Home from './pages/Home'
 import AdminDashboard from './pages/AdminDashboard'
 
 export default function App() {
-  const {
-    setUser,
-    authModalOpen,
-    cartModalOpen,
-    adminPanelOpen,
-    toggleAdminPanel,
-    fetchProducts,
-  } = useStore()
+  const { setUser } = useAuthStore()
+  const { fetchProducts } = useProductStore()
+  const { authModalOpen, cartDrawerOpen, adminPanelOpen, toggleAdminPanel } = useUIStore()
 
-  // Firebase auth state observer
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser)
@@ -29,12 +25,10 @@ export default function App() {
     return unsub
   }, [setUser])
 
-  // Seed Firestore on first run (no-op if already seeded or demo mode)
   useEffect(() => {
     seedFirestoreIfEmpty()
   }, [])
 
-  // Load products from Firestore (falls back to seed data in demo mode)
   useEffect(() => {
     fetchProducts()
   }, [fetchProducts])
@@ -46,7 +40,7 @@ export default function App() {
 
       {adminPanelOpen && <AdminDashboard onClose={toggleAdminPanel} />}
       {authModalOpen && <AuthModal />}
-      {cartModalOpen && <CartModal />}
+      <CartDrawer open={cartDrawerOpen} />
       <ToastContainer />
     </div>
   )

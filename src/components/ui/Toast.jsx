@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { X, CheckCircle, AlertCircle, Info, AlertTriangle } from 'lucide-react'
-import useStore from '../../store/useStore'
+import useUIStore from '../../store/useUIStore'
 
 const ICONS = {
   success: <CheckCircle size={18} className="text-green-400" />,
@@ -17,7 +17,7 @@ const BG = {
 }
 
 function ToastItem({ toast }) {
-  const removeToast = useStore((s) => s.removeToast)
+  const removeToast = useUIStore((s) => s.removeToast)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -54,7 +54,7 @@ function ToastItem({ toast }) {
 }
 
 export default function ToastContainer() {
-  const toasts = useStore((s) => s.toasts)
+  const toasts = useUIStore((s) => s.toasts)
 
   if (!toasts.length) return null
 

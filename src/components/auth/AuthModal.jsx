@@ -10,16 +10,15 @@ import {
 import { X, Mail, Phone, Eye, EyeOff, Loader2, Coffee } from 'lucide-react'
 import { auth, googleProvider, appleProvider } from '../../firebase/config'
 import { ensureUserDoc } from '../../firebase/firestore'
-import useStore from '../../store/useStore'
-
-// ─── Tab state: 'login' | 'signup' ───────────────────────────────────────────
-// ─── Method: 'email' | 'phone' ───────────────────────────────────────────────
+import useAuthStore from '../../store/useAuthStore'
+import useUIStore from '../../store/useUIStore'
 
 const DEMO_MODE = !import.meta.env.VITE_FIREBASE_API_KEY ||
   import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key'
 
 export default function AuthModal() {
-  const { closeAuthModal, setUser, addToast } = useStore()
+  const { setUser } = useAuthStore()
+  const { closeAuthModal, addToast } = useUIStore()
   const [tab, setTab] = useState('login')
   const [method, setMethod] = useState('email')
   const [loading, setLoading] = useState(false)
