@@ -41,11 +41,11 @@ const useCartStore = create(
         const { cart, cartTotal, clearCart } = get()
 
         if (!user) {
-          addToast('سجّل دخولك أولاً لإتمام الطلب', 'warning')
+          addToast('Please sign in to place an order', 'warning')
           return false
         }
         if (cart.length === 0) {
-          addToast('السلة فارغة', 'warning')
+          addToast('Your cart is empty', 'warning')
           return false
         }
         try {
@@ -53,10 +53,10 @@ const useCartStore = create(
             await submitOrder(user.uid, user.email, cart, cartTotal())
           }
           clearCart()
-          addToast('تم تقديم طلبك بنجاح! سنتواصل معك قريباً ☕', 'success')
+          addToast("Order placed! We'll contact you shortly ☕", 'success')
           return true
         } catch {
-          addToast('فشل تقديم الطلب، حاول مجدداً', 'error')
+          addToast('Order failed, please try again', 'error')
           return false
         }
       },
