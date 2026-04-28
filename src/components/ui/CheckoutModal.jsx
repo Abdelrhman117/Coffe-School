@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ShoppingBag, User, Phone, MapPin, CheckCircle, Loader2, ChevronRight, Coffee } from 'lucide-react'
+import emailjs from '@emailjs/browser'
 import useCartStore from '../../store/useCartStore'
 import useUIStore from '../../store/useUIStore'
 import useAuthStore from '../../store/useAuthStore'
@@ -8,6 +9,25 @@ import { submitOrder } from '../../firebase/firestore'
 
 const IS_DEMO = !import.meta.env.VITE_FIREBASE_API_KEY ||
   import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key'
+
+const EJS_SERVICE = import.meta.env.VITE_EMAILJS_SERVICE_ID
+const EJS_TEMPLATE = import.meta.env.VITE_EMAILJS_TEMPLATE_ID
+const EJS_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY
+const EMAILJS_ON = EJS_SERVICE && EJS_SERVICE !== 'your_service_id'
+
+async function sendOrderEmail(form, cart, total, userEmail) {
+  if (!EMAILJS_ON) return
+  const itemsList = cart.map((i) => `${i.nameEn || i.name} × ${i.quantity} — ${(i.price * i.quantity).toLocaleString('en-EG')} EGP`).join('\n')
+  await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+    customer_name: form.name,
+    customer_phone: form.phone,
+    customer_address: form.address || 'Not provided',
+    customer_email: userEmail || 'Not provided',
+    order_items: itemsList,
+    order_total: `${total.toLocaleString('en-EG')} EGP`,
+    order_date: new Date().toLocaleString('en-EG'),
+  }, EJS_KEY)
+}
 
 const STEPS = ['Review Order', 'Delivery Info', 'Confirmed']
 
@@ -36,6 +56,7 @@ export default function CheckoutModal({ open, onClose }) {
     setLoading(true)
     try {
       if (!IS_DEMO && user) await submitOrder(user.uid, user.email, cart, total, { ...form })
+      await sendOrderEmail(form, cart, total, user?.email)
       clearCart()
       setDone(true)
       go(2)
