@@ -6,9 +6,12 @@ import useCartStore from '../store/useCartStore'
 import useUIStore from '../store/useUIStore'
 
 const CONTACT = {
-  phones: ['+20 100 000 0000', '+20 111 111 1111'],
-  addresses: ['القاهرة — المهندسين، شارع جامعة الدول العربية', 'الإسكندرية — سموحة، شارع فؤاد'],
-  email: 'info@coffeeschool.com',
+  phones: ['+20 102 787 0687'],
+  addresses: [
+    'طنطا — تاون مول، الدور الخامس، شقة 7',
+    'الإسكندرية — محطة الرمل، 10 شارع شاكور',
+  ],
+  email: 'info@coffeschool.com',
 }
 
 const SECTION_ACCENTS = ['#f97316', '#c5a059', '#3b82f6', '#a855f7']
@@ -393,9 +396,10 @@ function AboutSection() {
           className="text-[#c5a059]/60 leading-relaxed max-w-2xl mx-auto"
           variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={0.2}
         >
-          نحن وكلاء حصريون لأشهر العلامات التجارية العالمية في مجال القهوة ومنتجاتها.
+          الوكيل الحصري في منطقة الدلتا لشراب 1883 وميد-كوفيز.
           نقدم دورات تدريبية احترافية بالشراكة مع أكاديمية Horeca Smart،
-          وننظم رحلات تعليمية وتذوق للمحترفين والهواة على حد سواء.
+          ومنتجات قهوة فاخرة لكل عشاق القهوة والمحترفين.
+          فروعنا في طنطا والإسكندرية.
         </motion.p>
 
         <motion.div
